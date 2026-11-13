@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>分析日志</title>
+<link rel="stylesheet" href="/style.css" />
+<style>
+  body { margin: 0; background: #f7f7fa; }
+  .log-page { display: grid; grid-template-columns: 300px 1fr; height: 100vh; }
+  .log-side { border-right: 1px solid var(--line); background: #fff; display: flex; flex-direction: column; }
+  .log-side-head { padding: 14px 16px; border-bottom: 1px solid var(--line); }
+  .log-side-head h1 { font-size: 14px; margin: 0 0 4px; }
+  .log-side-head p { margin: 0; font-size: 11px; color: var(--muted); }
+  .log-files { overflow: auto; padding: 8px; }
+  .log-main { display: flex; flex-direction: column; min-width: 0; }
+  .log-toolbar { padding: 10px 16px; border-bottom: 1px solid var(--line); display: flex; gap: 10px; align-items: center; background: #fff; }
+  .log-toolbar input { flex: 1; max-width: 320px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 12px; }
+  .log-body { overflow: auto; padding: 14px 16px; }
+  .log-empty { color: var(--muted); padding: 60px 0; text-align: center; font-size: 13px; }
+</style>
+</head>
+<body>
+  <div class="log-page">
+    <aside class="log-side">
+      <div class="log-side-head">
+        <h1 id="logTitle">分析日志</h1>
+        <p id="logSub">加载中…</p>
+      </div>
+      <div class="log-files" id="logFiles"></div>
+    </aside>
+    <main class="log-main">
+      <div class="log-toolbar">
+        <span id="logCurrent" class="modal-status">未选择日志</span>
+        <input id="logFilter" type="search" placeholder="筛选：步骤、关键词…" />
+        <button id="logBack" class="ghost" type="button">返回书库</button>
+      </div>
+      <div class="log-body" id="logBody"><div class="log-empty">从左边选一份日志</div></div>
+    </main>
+  </div>
+  <script type="module" src="/log.js"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "baseUrl": "https://api.openai.com/v1",
+  "apiKey": "sk-替换成你的密钥",
+  "model": "gpt-4o-mini",
+  "concurrency": 4,
+  "timeoutMs": 120000,
+  "jsonMode": true,
+  "_note": [
+    "baseUrl 填到 /v1 为止，不要带 /chat/completions。",
+    "任何 OpenAI 兼容网关都可用：DeepSeek、Moonshot、智谱、one-api 等，改 baseUrl 和 model 即可。",
+    "jsonMode=false 可关掉 response_format，用于不支持 JSON 模式的服务。",
+    "concurrency 建议从 4 开始；模型限流时报 429 就降到 2。"
+  ]
+}

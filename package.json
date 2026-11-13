@@ -1,0 +1,53 @@
+{
+  "name": "corpus-kit",
+  "version": "1.8.0",
+  "private": false,
+  "type": "module",
+  "description": "把中文长篇小说拆成结构化语料：场景、人物、关系、性格、语言、身体与衣着档案（本地模型驱动）",
+  "bin": {
+    "corpus-kit": "./cli.mjs"
+  },
+  "scripts": {
+    "demo": "node cli.mjs init --file samples/demo.txt --work work/demo --force && node cli.mjs run --work work/demo --mock",
+    "run": "node cli.mjs run",
+    "status": "node cli.mjs status",
+    "build": "node cli.mjs build",
+    "serve": "node app.mjs --root work --port 4173",
+    "release": "node tools/package-release.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "keywords": [
+    "novel",
+    "corpus",
+    "llm",
+    "local-model",
+    "ollama",
+    "chinese",
+    "writing"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chongrui20130326-web/corpus-kit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/chongrui20130326-web/corpus-kit/issues"
+  },
+  "homepage": "https://github.com/chongrui20130326-web/corpus-kit#readme",
+  "files": [
+    "cli.mjs",
+    "app.mjs",
+    "core",
+    "tools",
+    "ui",
+    "samples",
+    "config.example.json",
+    "README.md",
+    "LICENSE",
+    "pipeline.png",
+    "skills",
+    "CHANGELOG.md"
+  ]
+}

@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>corpus-kit · 语料查看器</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">corpus<span>·kit</span></div>
+    <select id="book" class="book-select" aria-label="选择书目"></select>
+    <div id="meta" class="meta"></div>
+    <span id="statusChip" class="status-chip" hidden></span>
+    <button id="importBtn" class="primary" type="button">＋ 导入新书</button>
+    <button id="revealBtn" class="ghost" type="button" title="在资源管理器里打开本书的数据目录">📁 数据目录</button>
+    <button id="libraryBtn" class="ghost" type="button">📚 书库</button>
+    <button id="settingsBtn" class="ghost" type="button">⚙ 设置</button>
+    <button id="adviseBtn" class="primary" type="button" style="background:#af52de">✎ 续写顾问</button>
+    <input id="fileInput" type="file" accept=".txt,.md,.json,text/plain,application/json" hidden />
+    <input id="search" class="search" type="search" placeholder="搜索原文 / 转折句 / 轨迹 / 承载句" aria-label="搜索" />
+  </header>
+
+  <nav class="viewtabs">
+    <button class="viewtab" data-view="prompts" type="button">Prompt 控制台</button>
+    <button class="viewtab" data-view="pipeline" type="button">0. 工作流水线</button>
+    <button class="viewtab" data-view="clean" type="button">1. 小说清洗</button>
+    <button class="viewtab" data-view="number" type="button">2. 内容编号</button>
+    <button class="viewtab" data-view="scenesview" type="button">3. 场景切分</button>
+    <button class="viewtab" data-view="characters" type="button">4. 生成角色</button>
+    <button class="viewtab" data-view="scenedetail" type="button">5. 场景详述</button>
+    <button class="viewtab" data-view="correct" type="button">5.1 角色纠错</button>
+    <button class="viewtab" data-view="link" type="button">5.2 人称关联</button>
+    <button class="viewtab" data-view="relink" type="button">5.3 关系重构</button>
+    <button class="viewtab" data-view="cardboard" type="button">6.1 角色人物卡</button>
+    <button class="viewtab" data-view="dialog" type="button">6.2 人物语言</button>
+    <button class="viewtab" data-view="dirty" type="button">6.2.1 淫言浪语</button>
+    <button class="viewtab" data-view="appear" type="button">6.3 角色外观</button>
+    <button class="viewtab" data-view="erotic" type="button">6.4 角色色情描写</button>
+    <button class="viewtab" data-view="reconcile" type="button">6. 角色重构</button>
+
+  </nav>
+
+  
+
+  <script type="module" src="/app.js"></script>
+
+  <div id="sessionModal" class="modal" hidden>
+    <div class="modal-box session-box">
+      <div class="modal-head">
+        <strong>分析与模型对话</strong>
+        <span id="sessionFile" class="modal-status" style="margin-left:10px"></span>
+        <button id="sessionClose" class="ghost" type="button" style="margin-left:auto">×</button>
+      </div>
+      <div id="sessionList" class="session-list"></div>
+      <div class="modal-foot">
+        <span id="sessionStatus" class="modal-status"></span>
+      </div>
+    </div>
+  </div>
+
+  <div id="settingsModal" class="modal" hidden>
+    <div class="modal-box" style="width:min(620px,100%)">
+      <div class="modal-head">
+        <strong>模型设置</strong>
+        <button id="settingsClose" class="ghost" type="button">×</button>
+      </div>
+
+      <label class="modal-label">API Key（DeepSeek / 任意 OpenAI 兼容服务）</label>
+      <input id="setApiKey" type="password" placeholder="sk-..." autocomplete="off" />
+      <div id="setKeyState" class="modal-status" style="margin-top:6px"></div>
+
+      <label class="modal-label">接口地址</label>
+      <input id="setBaseUrl" type="text" placeholder="https://api.deepseek.com/v1" />
+
+      <label class="modal-label">默认模型</label>
+      <input id="setModel" type="text" placeholder="api:deepseek-chat" />
+      <div class="modal-foot" style="justify-content:flex-start;margin-top:8px">
+        <button id="setTest" class="ghost" type="button">测试连接并获取模型</button>
+        <span id="setTestState" class="modal-status"></span>
+      </div>
+      <div id="setModels" class="tag-list" style="margin-top:8px"></div>
+      <div class="modal-status" style="margin-top:6px">可选：api:deepseek-chat、api:deepseek-reasoner、qwen3.5:9b-uncensored</div>
+
+      <label class="modal-label">并发数</label>
+      <input id="setConcurrency" type="text" placeholder="3" />
+
+      <label class="modal-label">混合模式：分步模型（留空表示跟随默认模型）</label>
+      <div id="setStepModels" class="step-models"></div>
+
+      <div class="modal-foot" style="margin-top:16px">
+        <span id="setStatus" class="modal-status"></span>
+        <button id="setSave" class="primary" type="button">保存</button>
+      </div>
+      <div id="setExtra" class="modal-status" style="margin-top:8px"></div>
+    </div>
+  </div>
+
+  <div id="importModal" class="modal" hidden>
+    <div class="modal-box" style="width:min(620px,100%)">
+      <div class="modal-head">
+        <strong>导入新书</strong>
+        <button id="importClose" class="ghost" type="button">×</button>
+      </div>
+      <label class="modal-label">小说文件（.txt / .md）或书籍工程（.json）</label>
+      <div class="import-file">
+        <button id="importPick" class="ghost" type="button">选择文件</button>
+        <span id="importFileName" class="modal-status">未选择</span>
+      </div>
+      <label class="modal-label">分析模型</label>
+      <div class="import-file">
+        <select id="importModel" class="import-model"></select>
+        <button id="importRefresh" class="ghost" type="button" title="重新读取可用模型">刷新</button>
+      </div>
+      <label class="hybrid-toggle"><input id="importHybrid" type="checkbox" /> 启用混合模式（按下面分步模型执行）</label>
+      <div id="importStepModels" class="step-models" hidden></div>
+      <div id="importModelHint" class="modal-status" style="margin-top:6px"></div>
+      <div class="modal-foot" style="margin-top:16px">
+        <span id="importStatus" class="modal-status"></span>
+        <button id="importStart" class="primary" type="button" disabled>开始分析</button>
+      </div>
+    </div>
+  </div>
+
+
+  <section id="reconcilePage" class="reconcile-page" hidden>
+    <div class="rc-head">
+      <span class="rc-title">角色重构</span>
+      <select id="rcBook" class="number-booksel"></select>
+      <select id="rcFrom" class="number-booksel"></select>
+      <span class="ch-meta">至</span>
+      <select id="rcTo" class="number-booksel"></select>
+      <button id="rcRun" class="primary" type="button">全部重构</button>
+      <button id="rcRunMissing" class="ghost" type="button">重构未完成</button>
+      <button id="rcApply" class="ghost" type="button">应用结论到角色表</button>
+      <button id="rcStop" class="primary danger" type="button" hidden>停止</button>
+      <span id="rcStatus" class="ch-steplog"></span>
+      <div id="rcBar" class="ch-bar"><i></i></div>
+    </div>
+    <div class="rc-split">
+      <aside class="rc-list" id="rcList"><div class="number-empty">加载中…</div></aside>
+      <div class="rc-report" id="rcReport"><div class="number-empty">左边选一个场景</div></div>
+      <aside class="rc-chars" id="rcChars">—</aside>
+    </div>
+  </section>
+
+  <section id="correctPage" class="correct-page" hidden>
+    <div class="rc-head">
+      <span class="rc-title">角色纠错</span>
+      <select id="ctBook" class="number-booksel"></select>
+      <select id="ctFrom" class="number-booksel"></select>
+      <span class="ch-meta">至</span>
+      <select id="ctTo" class="number-booksel"></select>
+      <button id="ctRun" class="primary" type="button">开始纠错</button>
+      <span class="ch-meta">模型：deepseek-flash</span>
+      <span id="ctStatus" class="ch-steplog">—</span>
+      <div id="ctBar" class="ch-bar"><i></i></div>
+    </div>
+    <div class="ct-split">
+      <aside class="ct-list" id="ctList"><div class="number-empty">还没有纠错结果</div></aside>
+      <div class="ct-detail" id="ctDetail"><div class="number-empty">左边选一章</div></div>
+      <aside class="ct-chars" id="ctChars"><div class="number-empty">—</div></aside>
+    </div>
+  </section>
+
+  <section id="linkPage" class="link-page" hidden>
+    <div class="rc-head">
+      <span class="rc-title">人称关联</span>
+      <select id="lkBook" class="number-booksel"></select>
+      <button id="lkNumber" class="ghost" type="button">重新编号</button>
+      <button id="lkMap" class="primary" type="button">继续未完成</button>
+      <button id="lkMapFresh" class="ghost" type="button">全部重跑</button>
+      <span id="lkStatus" class="ch-steplog">—</span>
+      <div id="lkBar" class="ch-bar"><i></i></div>
+    </div>
+    <div class="lk-three">
+      <aside class="lk-col">
+        <div class="ch-col-title">场景里的人称</div>
+        <div id="lkMentions" class="ch-col-body"><div class="number-empty">点中间的场景</div></div>
+      </aside>
+      <div class="lk-col lk-mid">
+        <div class="ch-col-title">场景</div>
+        <div id="lkScenes" class="ch-col-body lk-scene-list"><div class="number-empty">加载中…</div></div>
+        <div class="ch-col-title">场景内容（人称已标号）</div>
+        <div id="lkText" class="ch-scene-text"><div class="number-empty">点上面的场景</div></div>
+      </div>
+      <aside class="lk-col">
+        <div class="ch-col-title">角色真名表 <span id="lkCharCount" class="clean-count"></span></div>
+        <div id="lkChars" class="ch-col-body"><div class="number-empty">—</div></div>
+      </aside>
+    </div>
+  </section>
+
+
+  <section id="relinkPage" class="relink-page" hidden>
+    <div class="rc-head">
+      <span class="rc-title">关系重构</span>
+      <select id="rlBook" class="number-booksel"></select>
+      <select id="rlFrom" class="number-booksel"></select>
+      <span class="ch-meta">至</span>
+      <select id="rlTo" class="number-booksel"></select>
+      <button id="rlRun" class="primary" type="button">开始重构</button>
+      <span id="rlStatus" class="ch-steplog">—</span>
+      <div id="rlBar" class="ch-bar"><i></i></div>
+    </div>
+    <div class="rl-split">
+      <aside class="rl-list" id="rlList"><div class="number-empty">还没有结果</div></aside>
+      <div class="rl-right">
+        <div class="rl-pane rl-top" id="rlText"><div class="number-empty">左边选一章</div></div>
+        <div class="rl-pane rl-info" id="rlInfo"><div class="number-empty">点上方的人称，这里显示它的映射关系</div></div>
+        <div class="rl-pane rl-bottom" id="rlLog"><div class="number-empty">改动记录会显示在这里</div></div>
+      </div>
+      <aside class="rl-chars" id="rlChars"><div class="number-empty">角色加载中…</div></aside>
+    </div>
+  </section>
+  <div id="tblVersionBar" class="ch-row" hidden style="padding:6px 20px;display:flex;gap:8px;align-items:center;border-bottom:1px solid #eef1f8">
+    <span class="ch-meta">输出文件版本</span>
+    <select id="tblVersion" class="ch-meta" onchange="previewTableVersion()"></select>
+    <span id="tblVersionHint" class="ch-meta"></span>
+  </div>
+  <pre id="tblVersionBody" class="conv-pre" hidden style="margin:8px 20px"></pre>
+
+<section id="dialogPage" class="dialog-page" hidden>
+    <div class="rc-head">
+      <span class="rc-title">人物语言</span>
+      <select id="dlBook" class="number-booksel"></select>
+      <select id="dlFrom" class="number-booksel"></select>
+      <span class="ch-meta">至</span>
+      <select id="dlTo" class="number-booksel"></select>
+      <button id="dlNumber" class="ghost" type="button">对话编号</button>
+      <button id="dlMap" class="primary" type="button">映射说话人</button>
+      <button id="dlFill" class="ghost" type="button">补未映射</button>
+      <span id="dlStatus" class="ch-steplog">—</span>
+      <div id="dlBar" class="ch-bar"><i></i></div>
+    </div>
+    <div class="dl-split">
+      <aside class="dl-list" id="dlChars"><div class="number-empty">加载中…</div></aside>
+      <div class="dl-body" id="dlBody"><div class="number-empty">左边选一个角色</div></div>
+    </div>
+  </section>
+
+
+  <section id="appearPage" class="appear-page" hidden>
+    <div class="rc-head">
+      <span class="rc-title">角色外观</span>
+      <select id="apBook" class="number-booksel"></select>
+      <button id="apNumber" class="ghost" type="button">重新编号</button>
+      <button id="apMap" class="primary" type="button">映射到角色</button>
+      <span id="apStatus" class="ch-steplog">—</span>
+      <div id="apBar" class="ch-bar"><i></i></div>
+    </div>
+    <div class="ap-split">
+      <aside class="ap-list" id="apChars"><div class="number-empty">加载中…</div></aside>
+      <div class="ap-body" id="apBody"><div class="number-empty">左边选一个角色</div></div>
+    </div>
+  </section>
+
+  <section id="eroticPage" class="erotic-page" hidden>
+    <div class="rc-head">
+      <span class="rc-title">角色色情描写</span>
+      <select id="erBook" class="number-booksel"></select>
+      <button id="erRebuild" class="ghost" type="button">重新抽取</button>
+      <span id="erStatus" class="ch-steplog">—</span>
+      <div id="erBar" class="ch-bar"><i></i></div>
+    </div>
+    <div class="er-split">
+      <aside class="er-list" id="erChars"><div class="number-empty">加载中…</div></aside>
+      <div class="er-body" id="erBody"><div class="number-empty">左边选一个角色</div></div>
+    </div>
+  </section>
+<section id="dirtyPage" class="dirty-page" hidden>
+    <div class="rc-head">
+      <span class="rc-title">淫言浪语</span>
+      <select id="dtBook" class="number-booksel"></select>
+      <button id="dtRun" class="ghost" type="button">重新梳理</button>
+      <span id="dtStatus" class="ch-steplog">—</span>
+      <div id="dtBar" class="ch-bar"><i></i></div>
+    </div>
+    <div class="dt-split">
+      <aside class="dt-list" id="dtChars"><div class="number-empty">加载中…</div></aside>
+      <div class="dt-body" id="dtBody"><div class="number-empty">左边选一个角色</div></div>
+    </div>
+  </section>
+
+  <section id="promptsPage" class="prompts-page" hidden>
+    <div class="rc-head">
+      <span class="rc-title">Prompt 控制台</span>
+      <span id="pmStatus" class="ch-steplog">—</span>
+      <span class="ch-meta">所有提示词都在这里集中管理；各功能运行时从这里取用</span>
+    </div>
+    <div class="pm-split">
+      <aside class="pm-list" id="pmList"><div class="number-empty">加载中…</div></aside>
+      <div class="pm-body">
+        <div id="pmMeta" class="ch-meta"></div>
+        <textarea id="pmText" class="pm-text" spellcheck="false"></textarea>
+          <pre id="pmPreview" class="pm-preview" hidden></pre>
+        <div class="pm-actions">
+          <button id="pmSave" class="primary" type="button">保存</button>
+          <button id="pmReset" class="ghost" type="button">恢复默认</button>
+          <span id="pmHint" class="ch-meta"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="sceneDetailPage" class="scene-detail-page" hidden>
+    <div class="sd-head">
+      <span class="sd-title">场景详述</span>
+      <select id="sdBook" class="number-booksel"></select>
+      <span id="sdStatus" class="ch-steplog"></span>
+      <span class="clean-spacer"></span>
+      <select id="sdFrom" class="number-booksel"></select>
+      <span class="ch-meta">至</span>
+      <select id="sdTo" class="number-booksel"></select>
+      <label class="ch-meta" style="display:inline-flex;gap:4px;align-items:center"><input id="sdSkipDone" type="checkbox" /> 跳过已完成</label>
+      <select id="sdVersion" class="ch-meta" hidden title="切换历史版本"></select>
+      <button id="sdRestore" class="ghost" type="button" hidden>恢复所选版本</button>
+      <button id="sdRange" class="primary" type="button">生成所选范围</button>
+      <button id="sdAll" class="ghost" type="button">生成全部</button>
+    </div>
+    <div class="sd-split">
+      <aside class="sd-list" id="sdList"><div class="number-empty">加载中…</div></aside>
+      <div class="sd-body" id="sdBody"><div class="number-empty">左边选一个场景</div></div>
+        <aside class="sd-chars" id="sdChars"><div class="number-empty">角色加载中…</div></aside>
+    </div>
+  </section>
+
+  <section id="charactersPage" class="characters-page" hidden>
+    <div class="ch-head">
+      <span class="ch-title">生成角色</span>
+      <select id="chBookSel" class="number-booksel"></select>
+      <button id="chTable" class="ghost" type="button">生成角色真名表</button>
+      <button id="chMentionsBtn" class="ghost" type="button">生成场景内人称</button>
+      <button id="chBuild" class="primary" type="button">开始生成映射关系</button>
+      <div id="chBar" class="ch-bar"><i></i></div>
+      <span id="chMeta" class="ch-meta">—</span>
+      <span id="chStepLog" class="ch-steplog"></span>
+      <span class="clean-spacer"></span>
+      <button id="chReload" class="ghost" type="button">刷新</button>
+    </div>
+    <div class="ch-three">
+      <aside class="ch-col">
+        <div class="ch-col-title">场景里的人称</div>
+        <div id="chMentions" class="ch-col-body"><div class="number-empty">点中间的场景</div></div>
+      </aside>
+      <div class="ch-col ch-col-mid">
+        <div class="ch-col-title">场景</div>
+        <div id="chScenes" class="ch-col-body ch-scene-list"><div class="number-empty">还没有场景</div></div>
+        <div class="ch-col-title">场景内容（已标记人称高亮）</div>
+        <div id="chSceneText" class="ch-scene-text"><div class="number-empty">点上面的场景</div></div>
+      </div>
+      <aside class="ch-col">
+        <div class="ch-col-title">角色真名表</div>
+        <div id="chCharacters" class="ch-col-body ch-char-list">—</div>
+        <div class="ch-col-title">角色关系 <span id="chRelCount" class="clean-count"></span></div>
+        <div id="chRelations" class="ch-col-body ch-rel-list">—</div>
+      </aside>
+    </div>
+  </section>
+
+  <section id="scenesViewPage" class="scenes-view-page" hidden>
+    <div class="sv-head">
+      <span class="sv-title">场景切分</span>
+      <span id="svMeta" class="sv-meta">—</span>
+      <div id="svBar" class="ch-bar"><i></i></div>
+      <span class="clean-spacer"></span>
+      <select id="svBookSel" class="number-booksel"></select>
+      <button id="svImport" class="primary" type="button">开始切分</button>
+      <button id="svReload" class="ghost" type="button">刷新</button>
+    </div>
+    <div class="sv-split">
+      <aside id="svList" class="sv-list"></aside>
+      <div id="svDetail" class="sv-detail"><div class="number-empty">选择一个场景查看句子范围与正文</div></div>
+    </div>
+  </section>
+
+  <section id="cleanPage" class="clean-page" hidden>
+    <div class="clean-head">
+      <span class="clean-title">小说清洗</span>
+      <button id="cleanPick" class="ghost" type="button">选择小说文件</button>
+      <span id="cleanFileName" class="clean-file">未选择</span>
+      <label class="clean-book">书名 <input id="cleanBookName" type="text" placeholder="用于统一成《书名》（第N章）" /></label>
+      <label class="clean-ai"><input id="cleanAi" type="checkbox" /> 模型复核</label>
+      <span class="clean-spacer"></span>
+      <button id="cleanRun" class="primary" type="button" disabled>开始清洗</button>
+      <button id="cleanNumber" class="primary" type="button" disabled>保存并编号</button>
+    </div>
+
+    <div id="cleanStatus" class="clean-status">选择文件或粘贴文本后开始清洗</div>
+
+    <div class="clean-split">
+      <div class="clean-pane">
+        <div class="clean-pane-title">清洗结果</div>
+        <div class="clean-three">
+          <div class="clean-block"><div class="clean-block-title">书名</div><div id="cleanBookNameOut" class="clean-block-body">—</div></div>
+          <div class="clean-block"><div class="clean-block-title">目录 <span id="cleanTocCount" class="clean-count"></span></div><div id="cleanTocOut" class="clean-block-body clean-toc">—</div></div>
+          <div class="clean-block clean-block-grow"><div class="clean-block-title">正文 <span id="cleanBodyCount" class="clean-count"></span></div><pre id="cleanBodyOut" class="clean-block-body clean-pre">（尚未清洗）</pre></div>
+        </div>
+      </div>
+      <div class="clean-pane clean-side">
+        <div class="clean-pane-title">检查报告</div>
+        <div id="cleanStats" class="clean-stats">—</div>
+        <div id="cleanIssues" class="clean-issues"></div>
+      </div>
+    </div>
+  </section>
+
+
+  <section id="numberPage" class="number-page" hidden>
+    <div class="number-head">
+      <span class="number-title">小说内容编号</span>
+      <button id="numberPick" class="ghost" type="button">选择小说文件</button>
+      <span id="numberFile" class="number-file">未选择</span>
+      <span class="number-spacer"></span>
+      <select id="numberBookSel" class="number-booksel"></select>
+      <button id="numberOpenBook" class="ghost" type="button">打开书籍</button>
+      <button id="numberRun" class="primary" type="button" disabled>开始编号</button>
+      <button id="numberImport" class="ghost" type="button" disabled>更新书籍</button>
+    </div>
+
+    <div class="number-examples">
+    </div>
+
+    <div id="numberLog" class="number-log"></div>
+
+    <div class="number-split">
+      <aside id="numberTree" class="number-tree"><div class="number-empty">编号完成后，这里显示章节 / 段落 / 句子结构</div></aside>
+      <div id="numberContent" class="number-content"><div class="number-empty">右侧将显示带编号的正文</div></div>
+    </div>
+  </section>
+
+
+  <section id="pipelinePage" class="workflow-page" hidden>
+    <div class="wf-head">
+      <span class="wf-title">工作流水线</span>
+      <select id="wfBook" class="number-booksel"></select>
+      <span id="wfMeta" class="ch-meta">—</span>
+      <span class="clean-spacer"></span>
+      <select id="wfFrom" class="number-booksel"></select>
+      <span class="ch-meta">至</span>
+      <select id="wfTo" class="number-booksel"></select>
+      <select id="wfMode" class="number-booksel"><option value="manual">手动执行</option><option value="schedule">定时执行</option></select>
+      <input id="wfWhen" type="datetime-local" class="number-booksel" hidden />
+      <button id="wfRun" class="primary" type="button">执行</button>
+      
+      <button id="wfStop" class="primary danger" type="button" hidden>停止</button>
+    </div>
+    <div id="wfToast" class="wf-toast" hidden></div>
+    <div id="wfNow" class="wf-now" hidden></div>
+    <div id="wfSteps" class="wf-steps"><div class="number-empty">加载中…</div></div>
+
+    <div class="console-wrap">
+      <aside class="console-left">
+        <div class="cl-title">模型控制台</div>
+        <div class="cl-row"><span>模型</span><b id="clModel">—</b></div>
+        <div class="cl-row"><span>最大输出</span><b id="clMax">—</b></div>
+        <div class="cl-row"><span>状态</span><b id="clStatus">—</b></div>
+        <div class="cl-row"><span>缓存</span><b id="cacheBadge" class="cache-badge">—</b></div>
+        <div class="cl-actions">
+          <button id="clStart" class="primary" type="button">启动模型服务</button>
+          <button id="clStop" class="ghost" type="button">关闭模型服务</button>
+        </div>
+        <div class="cl-hint">所有分析功能应通过本控制台接口调用模型</div>
+      </aside>
+      <section class="console-right">
+        <div class="cl-tabs">
+          <button class="cl-tab active" data-tab="live" type="button">运行中对话 (<span id="clLiveCount">0</span>)</button>
+          <button class="cl-tab" data-tab="history" type="button">历史对话 (<span id="clHistCount">0</span>)</button>
+        </div>
+        <div id="clMessages" class="cl-messages"><div class="number-empty">暂无消息</div></div>
+      </section>
+    </div>
+
+  </section>
+
+  <section id="cardsPage" class="cardboard-page" hidden>
+    <div class="rc-head">
+      <span class="rc-title">角色人物卡</span>
+      <select id="cdBook" class="number-booksel"></select>
+      <select id="cdFrom" class="number-booksel"></select>
+      <span class="ch-meta">至</span>
+      <select id="cdTo" class="number-booksel"></select>
+      <button id="cdRun" class="primary" type="button">开始梳理</button>
+      <span class="ch-meta" id="cdModel">模型：—</span>
+      <span id="cdStatus" class="ch-steplog">—</span>
+      <div id="cdBar" class="ch-bar"><i></i></div>
+    </div>
+    <div class="cd-split">
+      <aside class="cd-list" id="cdChars"><div class="number-empty">还没有人物卡</div></aside>
+      <div class="cd-body" id="cdBody"><div class="number-empty">左边选一个角色</div></div>
+    </div>
+  </section>
+
+
+  <footer id="tabConfigBar" class="tab-config-bar">
+    <span class="tcb-view" id="tcbView">—</span>
+    <span class="tcb-tag" id="tcbMode">—</span>
+    <select id="tcbModelSel" class="tcb-model-sel"></select>
+    <span class="tcb-tag model" id="tcbModel">—</span>
+    <button class="tcb-toggle" id="tcbRefBtn" type="button" hidden>参考章节标题</button>
+    <button class="tcb-toggle" id="tcbActualBtn" type="button" hidden>日志</button>
+    <button class="tcb-toggle" id="tcbToggle" type="button">提示词（控制台）</button>
+    <span class="tcb-state" id="tcbDuration" title="本场详述的总生成时间"></span>
+    <span class="tcb-state" id="tcbMax" title="最近一次调用的最大输出 token">max —</span>
+    <span class="tcb-state" id="tcbCache" title="最近一次调用的 KV 缓存命中">缓存 —</span>
+    <span class="tcb-state" id="tcbState"></span>
+    <div class="tcb-prompt" id="tcbRef" hidden>
+      <textarea id="tcbRefText" rows="3" spellcheck="false" placeholder="粘贴几条本书的章节标题，例如：第一章 归乡 / 第2章 重逢 / 【第3章】雨夜"></textarea>
+      <div class="tcb-actions">
+        <button class="primary" id="tcbRefSave" type="button">保存参考</button>
+        <button class="ghost" id="tcbRefClear" type="button">清空</button>
+      </div>
+    </div>
+    <div class="tcb-prompt" id="tcbActual" hidden>
+      <pre id="tcbActualText" class="tcb-actual"></pre>
+    </div>
+    <div class="tcb-prompt" id="tcbPrompt" hidden>
+      <div class="ch-meta">内置任务提示词（只读，由工具生成，含动态部分）</div>
+      <pre id="tcbBuiltin" class="tcb-actual">加载中…</pre>
+      <div class="ch-meta">补充要求（可编辑，追加在上面的提示词之后）</div>
+      <textarea id="tcbPromptText" rows="4" spellcheck="false"></textarea>
+      <div class="tcb-actions">
+        <button class="primary" id="tcbSave" type="button">保存提示词</button>
+        <button class="ghost" id="tcbReset" type="button">恢复默认</button>
+      </div>
+    </div>
+  </footer>
+
+  <div id="convModal" class="modal" hidden>
+    <div class="modal-box" style="width:min(1100px,96vw);max-height:86vh;display:flex;flex-direction:column">
+      <div class="modal-head">
+        <strong>与模型的最近对话</strong>
+        <button id="convClose" class="ghost" type="button">×</button>
+      </div>
+      <div id="convBody" style="overflow:auto;padding:8px 4px"></div>
+    </div>
+  </div>
+
+  <div id="libraryModal" class="modal" hidden>
+    <div class="modal-box" style="width:min(980px,100%)">
+      <div class="modal-head">
+        <strong>书库</strong>
+        <button id="libLocalBtn" class="ghost active" type="button">本地书库</button>
+        <button id="libRemoteBtn" class="ghost" type="button">远端书库</button>
+        <button id="libraryClose" class="ghost" type="button">×</button>
+      </div>
+      <div id="libraryList" class="library-list"></div>
+    </div>
+  </div>
+
+  <div id="adviceModal" class="modal" hidden>
+    <div class="modal-box">
+      <div class="modal-head">
+        <strong>续写顾问</strong>
+        <button id="adviceClose" class="ghost" type="button">×</button>
+      </div>
+      <label class="modal-label">这一场要发生什么（大纲）</label>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input id="adviceScene" class="pipe-model" style="flex:0 0 140px" placeholder="场景号，如 S600" />
+        <input id="advicePeople" class="pipe-model" style="flex:1" placeholder="出场人物，逗号分隔（留空则用该场参与者）" />
+      </div>
+      <textarea id="adviceOutline" rows="4" placeholder="例：母亲第一次主动去表哥家，两人在床上的第二次，她开始主动迎合"></textarea>
+      <label class="modal-label">人物设定（可选）</label>
+      <input id="adviceChars" type="text" placeholder="例：母亲，38 岁，隐忍；表哥，22 岁，急躁" />
+      <div class="modal-foot">
+        <span id="adviceStatus" class="modal-status"></span>
+        <button id="adviceRun" class="primary" type="button">生成建议</button>
+      </div>
+      <div id="adviceResult" class="advice-result"></div>
+      <div id="adviceProse" class="advice-prose" hidden></div>
+    </div>
+  </div>
+
+  <div id="progress" class="progress-panel" hidden>
+    <div class="progress-head">
+      <strong id="pgTitle">导入中</strong>
+      <button id="pgClose" class="ghost" type="button" title="关闭进度面板">×</button>
+    </div>
+    <div class="progress-msg" id="pgMsg">准备中…</div>
+    <div class="progress-track"><div class="progress-bar" id="pgBar"></div></div>
+    <div class="progress-foot"><span id="pgMeta"></span></div>
+    <div class="progress-logs" id="pgLogs"></div>
+  </div>
+</body>
+</html>
